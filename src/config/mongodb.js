@@ -11,7 +11,12 @@ const connectDB = async () => {
                 console.error('MongoDB URI is missing in .env');
                 return;
             }
-            await mongoose.connect(uri);
+            // 🚀 DISABLE BUFFERING & SET TIMEOUT
+            mongoose.set('bufferCommands', false); 
+            await mongoose.connect(uri, {
+                serverSelectionTimeoutMS: 5000, // 5 seconds timeout
+                connectTimeoutMS: 10000 // 10 seconds connection timeout
+            });
             console.log('MongoDB Connected...');
         }
     } catch (err) {

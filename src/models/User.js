@@ -7,6 +7,6 @@ const UserSchema = new mongoose.Schema({
     weight: { type: Number },
     height: { type: Number },
     createdAt: { type: Date, default: Date.now }
-});
+}, { bufferCommands: false });
 
 module.exports = mongoose.model('User', UserSchema);

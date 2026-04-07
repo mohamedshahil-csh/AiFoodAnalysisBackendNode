@@ -9,10 +9,6 @@ const MealSchema = new mongoose.Schema({
     caution_reason: { type: String },
     full_json: { type: mongoose.Schema.Types.Mixed }, // Stores the full analysis data
     createdAt: { type: Date, default: Date.now }
-});
-
-// Since the user might be using a numeric ID from MySQL, 
-// I'll add a field to store it if needed, or just rely on ObjectId.
-// For now, let's keep it standard.
+}, { bufferCommands: false });
 
 module.exports = mongoose.model('Meal', MealSchema);

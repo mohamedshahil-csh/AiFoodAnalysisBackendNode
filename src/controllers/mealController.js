@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 exports.saveMeal = async (req, res) => {
     const userId = req.body.user_id;
     const data = req.body;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     const dishName = data.dishName;
     const calories = data.ingredients?.[0]?.calories || 0;
@@ -14,7 +15,7 @@ exports.saveMeal = async (req, res) => {
     const reason = data.clinicalSuitability?.explanation || "";
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const newMeal = new Meal({
                 user_id: userId,
                 dish_name: dishName,
@@ -25,7 +26,7 @@ exports.saveMeal = async (req, res) => {
                 full_json: data
             });
             await newMeal.save();
-            res.json({ message: "saved (MongoDB)" });
+            return res.json({ message: "saved (MongoDB)" });
         } else {
             // MySQL
             db.query(
@@ -43,22 +44,23 @@ exports.saveMeal = async (req, res) => {
                 ],
                 (err) => {
                     if (err) return res.status(500).json({ message: "error" });
-                    res.json({ message: "saved (MySQL)" });
+                    return res.json({ message: "saved (MySQL)" });
                 }
             );
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error("Save Meal Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
 };
 
 // GET ALL MEALS
 exports.getMeals = async (req, res) => {
     const userId = req.params.user_id;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const results = await Meal.find({ user_id: userId }).sort({ createdAt: -1 });
             // Map to match MySQL structure for compatibility
             const mappedResults = results.map(m => ({
@@ -69,7 +71,7 @@ exports.getMeals = async (req, res) => {
                 health_score: m.health_score,
                 created_at: m.createdAt
             }));
-            res.json(mappedResults);
+            return res.json(mappedResults);
         } else {
             // MySQL
             db.query(
@@ -86,25 +88,29 @@ exports.getMeals = async (req, res) => {
                 [userId],
                 (err, results) => {
                     if (err) return res.status(500).json({ message: "Error" });
-                    res.json(results);
+                    return res.json(results);
                 }
             );
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error("Get Meals Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
 };
 
 // GET SINGLE MEAL
 exports.getMealById = async (req, res) => {
     const id = req.params.id;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
+            if (!mongoose.Types.ObjectId.isValid(id)) {
+                 return res.status(400).json({ message: "Invalid ID format" });
+            }
             const meal = await Meal.findById(id);
             if (!meal) return res.status(404).json({ message: "Not found" });
-            res.json(meal);
+            return res.json(meal);
         } else {
             // MySQL
             db.query(
@@ -112,24 +118,28 @@ exports.getMealById = async (req, res) => {
                 [id],
                 (err, results) => {
                     if (err) return res.status(500).json({ message: "Error" });
-                    res.json(results[0]);
+                    return res.json(results[0]);
                 }
             );
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error("Get Meal By ID Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
 };
 
 // DELETE MEAL
 exports.deleteMeal = async (req, res) => {
     const id = req.params.id;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
+            if (!mongoose.Types.ObjectId.isValid(id)) {
+                 return res.status(400).json({ message: "Invalid ID format" });
+            }
             await Meal.findByIdAndDelete(id);
-            res.json({ message: "Deleted successfully (MongoDB)" });
+            return res.json({ message: "Deleted successfully (MongoDB)" });
         } else {
             // MySQL
             db.query(
@@ -137,13 +147,13 @@ exports.deleteMeal = async (req, res) => {
                 [id],
                 (err) => {
                     if (err) return res.status(500).json({ message: "Delete failed" });
-                    res.json({ message: "Deleted successfully (MySQL)" });
+                    return res.json({ message: "Deleted successfully (MySQL)" });
                 }
             );
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error("Delete Meal Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
 };
 
@@ -151,11 +161,12 @@ exports.deleteMeal = async (req, res) => {
 exports.getLatestMeals = async (req, res) => {
     const userId = req.params.user_id;
     const limit = parseInt(req.query.limit) || 5;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const results = await Meal.find({ user_id: userId }).sort({ createdAt: -1 }).limit(limit);
-            res.json(results);
+            return res.json(results);
         } else {
             // MySQL
             db.query(
@@ -166,13 +177,13 @@ exports.getLatestMeals = async (req, res) => {
                 [userId, limit],
                 (err, results) => {
                     if (err) return res.status(500).json({ message: "Error" });
-                    res.json(results);
+                    return res.json(results);
                 }
             );
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error("Get Latest Meals Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
 };
 
@@ -180,9 +191,10 @@ exports.getLatestMeals = async (req, res) => {
 exports.getMealsByDate = async (req, res) => {
     const userId = req.params.user_id;
     const { date } = req.query; // Expecting YYYY-MM-DD
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const start = new Date(date);
             const end = new Date(date);
             end.setDate(end.getDate() + 1);
@@ -191,7 +203,7 @@ exports.getMealsByDate = async (req, res) => {
                 user_id: userId,
                 createdAt: { $gte: start, $lt: end }
             }).sort({ createdAt: -1 });
-            res.json(results);
+            return res.json(results);
         } else {
             // MySQL
             db.query(
@@ -201,13 +213,13 @@ exports.getMealsByDate = async (req, res) => {
                 [userId, date],
                 (err, results) => {
                     if (err) return res.status(500).json({ message: "Error" });
-                    res.json(results);
+                    return res.json(results);
                 }
             );
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error("Get Meals By Date Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
 };
 
@@ -215,9 +227,10 @@ exports.getMealsByDate = async (req, res) => {
 exports.getMealsByRange = async (req, res) => {
     const userId = req.params.user_id;
     const { startDate, endDate } = req.query;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const start = new Date(startDate);
             const end = new Date(endDate);
             end.setDate(end.getDate() + 1);
@@ -226,7 +239,7 @@ exports.getMealsByRange = async (req, res) => {
                 user_id: userId,
                 createdAt: { $gte: start, $lt: end }
             }).sort({ createdAt: -1 });
-            res.json(results);
+            return res.json(results);
         } else {
             // MySQL
             db.query(
@@ -236,13 +249,13 @@ exports.getMealsByRange = async (req, res) => {
                 [userId, startDate, endDate],
                 (err, results) => {
                     if (err) return res.status(500).json({ message: "Error" });
-                    res.json(results);
+                    return res.json(results);
                 }
             );
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error("Get Meals By Range Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
 };
 
@@ -250,11 +263,12 @@ exports.getMealsByRange = async (req, res) => {
 exports.getLatestLimit = async (req, res) => {
     const userId = req.params.user_id;
     const limit = parseInt(req.query.limit) || 5;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const results = await Meal.find({ user_id: userId }).sort({ createdAt: -1 }).limit(limit);
-            res.json(results);
+            return res.json(results);
         } else {
             // MySQL
             db.query(
@@ -265,12 +279,12 @@ exports.getLatestLimit = async (req, res) => {
                 [userId, limit],
                 (err, results) => {
                     if (err) return res.status(500).json({ message: "Error" });
-                    res.json(results);
+                    return res.json(results);
                 }
             );
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
+        console.error("Get Latest Limit Error:", error);
+        return res.status(500).json({ message: "Server error" });
     }
 };

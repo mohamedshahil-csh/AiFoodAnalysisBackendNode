@@ -15,7 +15,7 @@ const ProfileSchema = new mongoose.Schema({
     hdl: Number,
     triglycerides: Number,
     bpSystolic: Number,
-    bpDiastolic: Number,
+    bpdiastolic: Number,
     egfr: Number,
     creatinine: Number,
     uricAcid: Number,
@@ -27,6 +27,6 @@ const ProfileSchema = new mongoose.Schema({
     medications: String,
     allergies: String,
     createdAt: { type: Date, default: Date.now }
-});
+}, { bufferCommands: false });
 
 module.exports = mongoose.model('Profile', ProfileSchema);

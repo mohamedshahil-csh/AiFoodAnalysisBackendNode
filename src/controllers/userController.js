@@ -6,15 +6,19 @@ const jwt = require('jsonwebtoken');
 // Register User
 exports.registerUser = async (req, res) => {
     const { name, email, password, weight, height } = req.body;
-    console.log("Registering user:", { name, email, dbType: process.env.DB_TYPE });
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
+    console.log("Registering user:", { name, email, dbType });
 
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const newUser = new User({ name, email, password: hashedPassword, weight, height });
-            await newUser.save();
-            res.json({ message: 'Registered successfully (MongoDB)' });
+            const savedUser = await newUser.save();
+            return res.json({ 
+                message: 'Registered successfully (MongoDB)',
+                user: { id: savedUser._id, name, email } 
+            });
         } else {
             // MySQL
             const query = `
@@ -26,22 +30,23 @@ exports.registerUser = async (req, res) => {
                     console.error("MySQL Register Error:", err);
                     return res.status(500).json({ message: 'User already exists or error' });
                 }
-                res.json({ message: 'Registered successfully (MySQL)' });
+                return res.json({ message: 'Registered successfully (MySQL)' });
             });
         }
-
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error("Register Error:", error);
+        return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
 // Login User
 exports.loginUser = async (req, res) => {
     const { email, password } = req.body;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
+    console.log("Logging in user:", { email, dbType });
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const user = await User.findOne({ email });
             if (!user) return res.status(400).json({ message: 'User not found' });
 
@@ -54,7 +59,7 @@ exports.loginUser = async (req, res) => {
                 { expiresIn: '1d' }
             );
 
-            res.json({
+            return res.json({
                 message: 'Login successful (MongoDB)',
                 token: token,
                 user: {
@@ -82,7 +87,7 @@ exports.loginUser = async (req, res) => {
                     { expiresIn: '1d' }
                 );
 
-                res.json({
+                return res.json({
                     message: 'Login successful (MySQL)',
                     token: token,
                     user: {
@@ -96,20 +101,21 @@ exports.loginUser = async (req, res) => {
             });
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error("Login Error:", error);
+        return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
 // Get User
 exports.getUser = async (req, res) => {
     const userId = req.user.id;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const user = await User.findById(userId).select('-password');
             if (!user) return res.status(404).json({ message: 'User not found' });
-            res.json({
+            return res.json({
                 id: user._id,
                 name: user.name,
                 email: user.email,
@@ -122,18 +128,19 @@ exports.getUser = async (req, res) => {
             db.query(query, [userId], (err, results) => {
                 if (err) return res.status(500).json({ message: 'Server error' });
                 if (results.length === 0) return res.status(404).json({ message: 'User not found' });
-                res.json(results[0]);
+                return res.json(results[0]);
             });
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error("Get User Error:", error);
+        return res.status(500).json({ message: 'Server error' });
     }
 };
 
 // Update User
 exports.updateUser = async (req, res) => {
     const userId = req.params.id;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     if (req.user.id != userId) {
         return res.status(403).json({ message: 'Unauthorized' });
@@ -142,9 +149,9 @@ exports.updateUser = async (req, res) => {
     const { name, email, weight, height } = req.body;
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             await User.findByIdAndUpdate(userId, { name, email, weight, height });
-            res.json({ message: 'Profile updated successfully (MongoDB)' });
+            return res.json({ message: 'Profile updated successfully (MongoDB)' });
         } else {
             // MySQL
             const query = `
@@ -157,11 +164,11 @@ exports.updateUser = async (req, res) => {
                     console.error(err);
                     return res.status(500).json({ message: 'Update failed' });
                 }
-                res.json({ message: 'Profile updated successfully (MySQL)' });
+                return res.json({ message: 'Profile updated successfully (MySQL)' });
             });
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error("Update User Error:", error);
+        return res.status(500).json({ message: 'Server error' });
     }
 };

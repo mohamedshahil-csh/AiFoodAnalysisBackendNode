@@ -7,6 +7,6 @@ const FoodSchema = new mongoose.Schema({
     fat: { type: Number },
     carbs: { type: Number },
     createdAt: { type: Date, default: Date.now }
-});
+}, { bufferCommands: false });
 
 module.exports = mongoose.model('Food', FoodSchema);
