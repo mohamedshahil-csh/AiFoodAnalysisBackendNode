@@ -6,7 +6,12 @@ dotenv.config();
 const connectDB = async () => {
     try {
         if (process.env.DB_TYPE === 'mongodb') {
-            await mongoose.connect(process.env.MONGODB_URI);
+            const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+            if (!uri) {
+                console.error('MongoDB URI is missing in .env');
+                return;
+            }
+            await mongoose.connect(uri);
             console.log('MongoDB Connected...');
         }
     } catch (err) {
