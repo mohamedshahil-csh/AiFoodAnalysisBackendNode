@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const getDB = require('../config/db');
 const Meal = require('../models/Meal');
 const mongoose = require('mongoose');
 
@@ -33,7 +33,7 @@ exports.saveMeal = async (req, res) => {
                 (user_id,dish_name,calories,health_score,verdict,caution_reason,full_json)
                 VALUES (?,?,?,?,?,?,?)`;
             
-            await db.promise().query(query, [
+            await getDB().promise().query(query, [
                 userId,
                 dishName,
                 calories,
@@ -81,7 +81,7 @@ exports.getMeals = async (req, res) => {
                 WHERE user_id = ?
                 ORDER BY created_at DESC`;
             
-            const [results] = await db.promise().query(query, [userId]);
+            const [results] = await getDB().promise().query(query, [userId]);
             return res.json(results);
         }
     } catch (error) {
@@ -106,7 +106,7 @@ exports.getMealById = async (req, res) => {
         } else {
             // MySQL Promise-based
             const query = `SELECT * FROM meal_history WHERE id = ?`;
-            const [results] = await db.promise().query(query, [id]);
+            const [results] = await getDB().promise().query(query, [id]);
             return res.json(results[0] || {});
         }
     } catch (error) {
@@ -130,7 +130,7 @@ exports.deleteMeal = async (req, res) => {
         } else {
             // MySQL Promise-based
             const query = `DELETE FROM meal_history WHERE id = ?`;
-            await db.promise().query(query, [id]);
+            await getDB().promise().query(query, [id]);
             return res.json({ message: "Deleted successfully (MySQL)" });
         }
     } catch (error) {

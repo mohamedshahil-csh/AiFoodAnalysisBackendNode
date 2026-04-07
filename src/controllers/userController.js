@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const getDB = require('../config/db');
 const User = require('../models/User'); // MongoDB model
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -26,8 +26,8 @@ exports.registerUser = async (req, res) => {
                 VALUES (?, ?, ?, ?, ?)
             `;
             try {
-                // Using .promise() to ensure async/await works correctly
-                await db.promise().query(query, [name, email, hashedPassword, weight, height]);
+                // Using db.promise() to ensure async/await works correctly
+                await getDB().promise().query(query, [name, email, hashedPassword, weight, height]);
                 return res.json({ message: 'Registered successfully (MySQL)' });
             } catch (err) {
                 console.error("MySQL Register Error:", err);
@@ -74,7 +74,7 @@ exports.loginUser = async (req, res) => {
         } else {
             // MySQL
             const query = `SELECT * FROM users WHERE email = ?`;
-            const [results] = await db.promise().query(query, [email]);
+            const [results] = await getDB().promise().query(query, [email]);
 
             if (results.length === 0) {
                 return res.status(400).json({ message: 'User not found' });
@@ -129,7 +129,7 @@ exports.getUser = async (req, res) => {
         } else {
             // MySQL
             const query = `SELECT id, name, email, weight, height FROM users WHERE id = ?`;
-            const [results] = await db.promise().query(query, [userId]);
+            const [results] = await getDB().promise().query(query, [userId]);
             
             if (results.length === 0) {
                 return res.status(404).json({ message: 'User not found' });
@@ -164,7 +164,7 @@ exports.updateUser = async (req, res) => {
                 SET name = ?, email = ?, weight = ?, height = ?
                 WHERE id = ?
             `;
-            await db.promise().query(query, [name, email, weight, height, userId]);
+            await getDB().promise().query(query, [name, email, weight, height, userId]);
             return res.json({ message: 'Profile updated successfully (MySQL)' });
         }
     } catch (error) {

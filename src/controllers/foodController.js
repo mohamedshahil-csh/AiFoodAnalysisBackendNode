@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const getDB = require('../config/db');
 const Food = require('../models/Food');
 
 // ADD FOOD
@@ -14,7 +14,7 @@ exports.addFood = async (req, res) => {
         } else {
             // MySQL Promise-based
             const query = `INSERT INTO foods (name, calories, protein, fat, carbs) VALUES (?, ?, ?, ?, ?)`;
-            await db.promise().query(query, [name, calories, protein, fat, carbs]);
+            await getDB().promise().query(query, [name, calories, protein, fat, carbs]);
             return res.status(201).json({ message: 'Food added successfully (MySQL)' });
         }
     } catch (error) {
@@ -34,7 +34,7 @@ exports.getAllFoods = async (req, res) => {
         } else {
             // MySQL Promise-based
             const query = `SELECT * FROM foods`;
-            const [results] = await db.promise().query(query);
+            const [results] = await getDB().promise().query(query);
             return res.json(results);
         }
     } catch (error) {

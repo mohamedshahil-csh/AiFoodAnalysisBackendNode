@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const getDB = require('../config/db');
 const Profile = require('../models/Profile');
 const mongoose = require('mongoose');
 
@@ -31,7 +31,7 @@ exports.saveProfile = async (req, res) => {
         } else {
             // MySQL Promise-based
             const checkQuery = `SELECT id FROM user_profiles WHERE user_id = ?`;
-            const [results] = await db.promise().query(checkQuery, [user_id]);
+            const [results] = await getDB().promise().query(checkQuery, [user_id]);
 
             if (results.length > 0) {
                 // Update
@@ -44,7 +44,7 @@ exports.saveProfile = async (req, res) => {
                         heartRate=?, spo2=?, conditions=?, medications=?, allergies=?
                     WHERE user_id = ?
                 `;
-                await db.promise().query(updateQuery, [
+                await getDB().promise().query(updateQuery, [
                     age, gender, occupation, weight, height, hba1c, fastingBloodSugar, 
                     postprandialSugar, totalCholesterol, ldl, hdl, triglycerides, 
                     bpSystolic, bpdiastolic, egfr, creatinine, uricAcid, tsh, 
@@ -61,7 +61,7 @@ exports.saveProfile = async (req, res) => {
                     conditions, medications, allergies) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
-                await db.promise().query(insertQuery, [
+                await getDB().promise().query(insertQuery, [
                     user_id, age, gender, occupation, weight, height, hba1c, fastingBloodSugar, 
                     postprandialSugar, totalCholesterol, ldl, hdl, triglycerides, bpSystolic, 
                     bpdiastolic, egfr, creatinine, uricAcid, tsh, hemoglobin, heartRate, spo2, 
@@ -88,7 +88,7 @@ exports.getProfile = async (req, res) => {
         } else {
             // MySQL Promise-based
             const query = `SELECT * FROM user_profiles WHERE user_id = ?`;
-            const [results] = await db.promise().query(query, [userId]);
+            const [results] = await getDB().promise().query(query, [userId]);
             return res.json(results[0] || {});
         }
     } catch (error) {
