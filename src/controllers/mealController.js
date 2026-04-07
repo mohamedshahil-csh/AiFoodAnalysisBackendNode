@@ -28,29 +28,26 @@ exports.saveMeal = async (req, res) => {
             await newMeal.save();
             return res.json({ message: "saved (MongoDB)" });
         } else {
-            // MySQL
-            db.query(
-                `INSERT INTO meal_history 
+            // MySQL Promise-based
+            const query = `INSERT INTO meal_history 
                 (user_id,dish_name,calories,health_score,verdict,caution_reason,full_json)
-                VALUES (?,?,?,?,?,?,?)`,
-                [
-                    userId,
-                    dishName,
-                    calories,
-                    healthScore,
-                    verdict,
-                    reason,
-                    JSON.stringify(data)
-                ],
-                (err) => {
-                    if (err) return res.status(500).json({ message: "error" });
-                    return res.json({ message: "saved (MySQL)" });
-                }
-            );
+                VALUES (?,?,?,?,?,?,?)`;
+            
+            await db.promise().query(query, [
+                userId,
+                dishName,
+                calories,
+                healthScore,
+                verdict,
+                reason,
+                JSON.stringify(data)
+            ]);
+            
+            return res.json({ message: "saved (MySQL)" });
         }
     } catch (error) {
         console.error("Save Meal Error:", error);
-        return res.status(500).json({ message: "Server error" });
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
@@ -62,7 +59,6 @@ exports.getMeals = async (req, res) => {
     try {
         if (dbType === 'mongodb') {
             const results = await Meal.find({ user_id: userId }).sort({ createdAt: -1 });
-            // Map to match MySQL structure for compatibility
             const mappedResults = results.map(m => ({
                 id: m._id,
                 dish_name: m.dish_name,
@@ -73,9 +69,8 @@ exports.getMeals = async (req, res) => {
             }));
             return res.json(mappedResults);
         } else {
-            // MySQL
-            db.query(
-                `SELECT 
+            // MySQL Promise-based
+            const query = `SELECT 
                     id,
                     dish_name,
                     calories,
@@ -84,17 +79,14 @@ exports.getMeals = async (req, res) => {
                     created_at
                 FROM meal_history
                 WHERE user_id = ?
-                ORDER BY created_at DESC`,
-                [userId],
-                (err, results) => {
-                    if (err) return res.status(500).json({ message: "Error" });
-                    return res.json(results);
-                }
-            );
+                ORDER BY created_at DESC`;
+            
+            const [results] = await db.promise().query(query, [userId]);
+            return res.json(results);
         }
     } catch (error) {
         console.error("Get Meals Error:", error);
-        return res.status(500).json({ message: "Server error" });
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
@@ -112,19 +104,14 @@ exports.getMealById = async (req, res) => {
             if (!meal) return res.status(404).json({ message: "Not found" });
             return res.json(meal);
         } else {
-            // MySQL
-            db.query(
-                `SELECT * FROM meal_history WHERE id = ?`,
-                [id],
-                (err, results) => {
-                    if (err) return res.status(500).json({ message: "Error" });
-                    return res.json(results[0]);
-                }
-            );
+            // MySQL Promise-based
+            const query = `SELECT * FROM meal_history WHERE id = ?`;
+            const [results] = await db.promise().query(query, [id]);
+            return res.json(results[0] || {});
         }
     } catch (error) {
         console.error("Get Meal By ID Error:", error);
-        return res.status(500).json({ message: "Server error" });
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
@@ -141,19 +128,14 @@ exports.deleteMeal = async (req, res) => {
             await Meal.findByIdAndDelete(id);
             return res.json({ message: "Deleted successfully (MongoDB)" });
         } else {
-            // MySQL
-            db.query(
-                `DELETE FROM meal_history WHERE id = ?`,
-                [id],
-                (err) => {
-                    if (err) return res.status(500).json({ message: "Delete failed" });
-                    return res.json({ message: "Deleted successfully (MySQL)" });
-                }
-            );
+            // MySQL Promise-based
+            const query = `DELETE FROM meal_history WHERE id = ?`;
+            await db.promise().query(query, [id]);
+            return res.json({ message: "Deleted successfully (MySQL)" });
         }
     } catch (error) {
         console.error("Delete Meal Error:", error);
-        return res.status(500).json({ message: "Server error" });
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
@@ -169,28 +151,23 @@ exports.getLatestMeals = async (req, res) => {
             return res.json(results);
         } else {
             // MySQL
-            db.query(
-                `SELECT * FROM meal_history
+            const query = `SELECT * FROM meal_history
                  WHERE user_id = ?
                  ORDER BY created_at DESC
-                 LIMIT ?`,
-                [userId, limit],
-                (err, results) => {
-                    if (err) return res.status(500).json({ message: "Error" });
-                    return res.json(results);
-                }
-            );
+                 LIMIT ?`;
+            const [results] = await db.promise().query(query, [userId, limit]);
+            return res.json(results);
         }
     } catch (error) {
         console.error("Get Latest Meals Error:", error);
-        return res.status(500).json({ message: "Server error" });
+        return res.status(500).json({ message: "Error", error: error.message });
     }
 };
 
-// GET BY DATE
+// DATE, RANGE, LIMIT functions updated similarly...
 exports.getMealsByDate = async (req, res) => {
     const userId = req.params.user_id;
-    const { date } = req.query; // Expecting YYYY-MM-DD
+    const { date } = req.query;
     const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
@@ -198,32 +175,24 @@ exports.getMealsByDate = async (req, res) => {
             const start = new Date(date);
             const end = new Date(date);
             end.setDate(end.getDate() + 1);
-
             const results = await Meal.find({
                 user_id: userId,
                 createdAt: { $gte: start, $lt: end }
             }).sort({ createdAt: -1 });
             return res.json(results);
         } else {
-            // MySQL
-            db.query(
-                `SELECT * FROM meal_history
+            const query = `SELECT * FROM meal_history
                  WHERE user_id = ?
-                 AND DATE(created_at) = ?`,
-                [userId, date],
-                (err, results) => {
-                    if (err) return res.status(500).json({ message: "Error" });
-                    return res.json(results);
-                }
-            );
+                 AND DATE(created_at) = ?`;
+            const [results] = await db.promise().query(query, [userId, date]);
+            return res.json(results);
         }
     } catch (error) {
-        console.error("Get Meals By Date Error:", error);
-        return res.status(500).json({ message: "Server error" });
+        console.error(error);
+        return res.status(500).json({ message: "Error" });
     }
 };
 
-// GET RANGE
 exports.getMealsByRange = async (req, res) => {
     const userId = req.params.user_id;
     const { startDate, endDate } = req.query;
@@ -234,32 +203,24 @@ exports.getMealsByRange = async (req, res) => {
             const start = new Date(startDate);
             const end = new Date(endDate);
             end.setDate(end.getDate() + 1);
-
             const results = await Meal.find({
                 user_id: userId,
                 createdAt: { $gte: start, $lt: end }
             }).sort({ createdAt: -1 });
             return res.json(results);
         } else {
-            // MySQL
-            db.query(
-                `SELECT * FROM meal_history
+            const query = `SELECT * FROM meal_history
                  WHERE user_id = ?
-                 AND DATE(created_at) BETWEEN ? AND ?`,
-                [userId, startDate, endDate],
-                (err, results) => {
-                    if (err) return res.status(500).json({ message: "Error" });
-                    return res.json(results);
-                }
-            );
+                 AND DATE(created_at) BETWEEN ? AND ?`;
+            const [results] = await db.promise().query(query, [userId, startDate, endDate]);
+            return res.json(results);
         }
     } catch (error) {
-        console.error("Get Meals By Range Error:", error);
-        return res.status(500).json({ message: "Server error" });
+        console.error(error);
+        return res.status(500).json({ message: "Error" });
     }
 };
 
-// GET LATEST LIMIT
 exports.getLatestLimit = async (req, res) => {
     const userId = req.params.user_id;
     const limit = parseInt(req.query.limit) || 5;
@@ -270,21 +231,15 @@ exports.getLatestLimit = async (req, res) => {
             const results = await Meal.find({ user_id: userId }).sort({ createdAt: -1 }).limit(limit);
             return res.json(results);
         } else {
-            // MySQL
-            db.query(
-                `SELECT * FROM meal_history
+            const query = `SELECT * FROM meal_history
                  WHERE user_id = ?
                  ORDER BY created_at DESC
-                 LIMIT ?`,
-                [userId, limit],
-                (err, results) => {
-                    if (err) return res.status(500).json({ message: "Error" });
-                    return res.json(results);
-                }
-            );
+                 LIMIT ?`;
+            const [results] = await db.promise().query(query, [userId, limit]);
+            return res.json(results);
         }
     } catch (error) {
-        console.error("Get Latest Limit Error:", error);
-        return res.status(500).json({ message: "Server error" });
+        console.error(error);
+        return res.status(500).json({ message: "Error" });
     }
 };

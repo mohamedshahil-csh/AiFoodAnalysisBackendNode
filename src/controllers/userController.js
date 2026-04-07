@@ -20,21 +20,22 @@ exports.registerUser = async (req, res) => {
                 user: { id: savedUser._id, name, email } 
             });
         } else {
-            // MySQL
+            // MySQL (Promise-based for Express 5 support)
             const query = `
                 INSERT INTO users (name, email, password, weight, height) 
                 VALUES (?, ?, ?, ?, ?)
             `;
-            db.query(query, [name, email, hashedPassword, weight, height], (err, result) => {
-                if (err) {
-                    console.error("MySQL Register Error:", err);
-                    return res.status(500).json({ message: 'User already exists or error' });
-                }
+            try {
+                // Using .promise() to ensure async/await works correctly
+                await db.promise().query(query, [name, email, hashedPassword, weight, height]);
                 return res.json({ message: 'Registered successfully (MySQL)' });
-            });
+            } catch (err) {
+                console.error("MySQL Register Error:", err);
+                return res.status(500).json({ message: 'User already exists or database error' });
+            }
         }
     } catch (error) {
-        console.error("Register Error:", error);
+        console.error("Register Controller Error:", error);
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
@@ -73,35 +74,38 @@ exports.loginUser = async (req, res) => {
         } else {
             // MySQL
             const query = `SELECT * FROM users WHERE email = ?`;
-            db.query(query, [email], async (err, results) => {
-                if (err) return res.status(500).json({ message: 'Server error' });
-                if (results.length === 0) return res.status(400).json({ message: 'User not found' });
+            const [results] = await db.promise().query(query, [email]);
 
-                const user = results[0];
-                const isMatch = await bcrypt.compare(password, user.password);
-                if (!isMatch) return res.status(400).json({ message: 'Invalid password' });
+            if (results.length === 0) {
+                return res.status(400).json({ message: 'User not found' });
+            }
 
-                const token = jwt.sign(
-                    { id: user.id, email: user.email },
-                    process.env.JWT_SECRET,
-                    { expiresIn: '1d' }
-                );
+            const user = results[0];
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (!isMatch) {
+                return res.status(400).json({ message: 'Invalid password' });
+            }
 
-                return res.json({
-                    message: 'Login successful (MySQL)',
-                    token: token,
-                    user: {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        weight: user.weight,
-                        height: user.height
-                    }
-                });
+            const token = jwt.sign(
+                { id: user.id, email: user.email },
+                process.env.JWT_SECRET,
+                { expiresIn: '1d' }
+            );
+
+            return res.json({
+                message: 'Login successful (MySQL)',
+                token: token,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    weight: user.weight,
+                    height: user.height
+                }
             });
         }
     } catch (error) {
-        console.error("Login Error:", error);
+        console.error("Login Controller Error:", error);
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
@@ -125,11 +129,12 @@ exports.getUser = async (req, res) => {
         } else {
             // MySQL
             const query = `SELECT id, name, email, weight, height FROM users WHERE id = ?`;
-            db.query(query, [userId], (err, results) => {
-                if (err) return res.status(500).json({ message: 'Server error' });
-                if (results.length === 0) return res.status(404).json({ message: 'User not found' });
-                return res.json(results[0]);
-            });
+            const [results] = await db.promise().query(query, [userId]);
+            
+            if (results.length === 0) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+            return res.json(results[0]);
         }
     } catch (error) {
         console.error("Get User Error:", error);
@@ -159,13 +164,8 @@ exports.updateUser = async (req, res) => {
                 SET name = ?, email = ?, weight = ?, height = ?
                 WHERE id = ?
             `;
-            db.query(query, [name, email, weight, height, userId], (err, result) => {
-                if (err) {
-                    console.error(err);
-                    return res.status(500).json({ message: 'Update failed' });
-                }
-                return res.json({ message: 'Profile updated successfully (MySQL)' });
-            });
+            await db.promise().query(query, [name, email, weight, height, userId]);
+            return res.json({ message: 'Profile updated successfully (MySQL)' });
         }
     } catch (error) {
         console.error("Update User Error:", error);

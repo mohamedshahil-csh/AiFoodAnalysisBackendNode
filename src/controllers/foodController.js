@@ -1,47 +1,44 @@
 const db = require('../config/db');
 const Food = require('../models/Food');
 
-// Add Food
+// ADD FOOD
 exports.addFood = async (req, res) => {
     const { name, calories, protein, fat, carbs } = req.body;
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
+        if (dbType === 'mongodb') {
             const newFood = new Food({ name, calories, protein, fat, carbs });
             await newFood.save();
-            res.json({ message: 'Food added successfully (MongoDB)' });
+            return res.status(201).json({ message: 'Food added successfully (MongoDB)' });
         } else {
-            // MySQL
-            const query = `
-                INSERT INTO foods (name, calories, protein, fat, carbs)
-                VALUES (?, ?, ?, ?, ?)
-            `;
-            db.query(query, [name, calories, protein, fat, carbs], (err, result) => {
-                if (err) return res.status(500).json({ message: 'Error adding food' });
-                res.json({ message: 'Food added successfully (MySQL)' });
-            });
+            // MySQL Promise-based
+            const query = `INSERT INTO foods (name, calories, protein, fat, carbs) VALUES (?, ?, ?, ?, ?)`;
+            await db.promise().query(query, [name, calories, protein, fat, carbs]);
+            return res.status(201).json({ message: 'Food added successfully (MySQL)' });
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error("Add Food Error:", error);
+        return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
 
-// Get Foods
-exports.getFoods = async (req, res) => {
+// GET ALL FOODS
+exports.getAllFoods = async (req, res) => {
+    const dbType = (process.env.DB_TYPE || 'mysql').trim();
+
     try {
-        if (process.env.DB_TYPE === 'mongodb') {
-            const foods = await Food.find().sort({ createdAt: -1 });
-            res.json(foods);
+        if (dbType === 'mongodb') {
+            const foods = await Food.find();
+            return res.json(foods);
         } else {
-            // MySQL
-            db.query('SELECT * FROM foods', (err, results) => {
-                if (err) return res.status(500).json({ message: 'Error fetching foods' });
-                res.json(results);
-            });
+            // MySQL Promise-based
+            const query = `SELECT * FROM foods`;
+            const [results] = await db.promise().query(query);
+            return res.json(results);
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error("Get All Foods Error:", error);
+        return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
