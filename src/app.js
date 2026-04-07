@@ -37,11 +37,13 @@ app.use((req, res, next) => {
 
 // 🏥 HEALTH CHECK / DIAGNOSTICS
 app.get('/api/health', (req, res) => {
+    const rawSecret = process.env.JWT_SECRET || '';
     res.json({
         status: "up",
         db_type: process.env.DB_TYPE || 'mysql',
         env: process.env.NODE_ENV || 'development',
         mongo_uri_exists: !!(process.env.MONGODB_URI || process.env.MONGO_URI),
+        jwt_secret_status: rawSecret ? `Present (Length: ${rawSecret.trim().length})` : "Missing (Using Fallback)",
         mysql_host: process.env.DB_HOST || 'localhost'
     });
 });

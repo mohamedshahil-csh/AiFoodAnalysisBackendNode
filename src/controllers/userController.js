@@ -95,9 +95,11 @@ exports.loginUser = async (req, res) => {
             }
 
             console.log("Login Step 3: Generating token...");
+            // Use the same robust secret logic as the MongoDB path
+            const secret = (process.env.JWT_SECRET || 'fallback_secret').trim();
             const token = jwt.sign(
-                { id: user.id, email: user.email },
-                process.env.JWT_SECRET,
+                { id: user.id.toString(), email: user.email },
+                secret,
                 { expiresIn: '1d' }
             );
 
