@@ -15,9 +15,9 @@ exports.registerUser = async (req, res) => {
         if (dbType === 'mongodb') {
             const newUser = new User({ name, email, password: hashedPassword, weight, height });
             const savedUser = await newUser.save();
-            return res.json({ 
+            return res.json({
                 message: 'Registered successfully (MongoDB)',
-                user: { id: savedUser._id, name, email } 
+                user: { id: savedUser._id, name, email }
             });
         } else {
             // MySQL (Promise-based for Express 5 support)
@@ -63,9 +63,10 @@ exports.loginUser = async (req, res) => {
             }
 
             console.log("Login Step 3: Generating token...");
+            const secret = (process.env.JWT_SECRET || 'fallback_secret').trim();
             const token = jwt.sign(
-                { id: user._id, email: user.email },
-                process.env.JWT_SECRET,
+                { id: user._id.toString(), email: user.email },
+                secret,
                 { expiresIn: '1d' }
             );
 
@@ -133,7 +134,7 @@ exports.getUser = async (req, res) => {
             // MySQL
             const query = `SELECT id, name, email, weight, height FROM users WHERE id = ?`;
             const [results] = await getDB().promise().query(query, [userId]);
-            
+
             if (results.length === 0) {
                 return res.status(404).json({ message: 'User not found' });
             }
