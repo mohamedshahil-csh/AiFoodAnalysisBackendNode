@@ -1,6 +1,6 @@
 const getDB = require('../config/db');
 const User = require('../models/User'); // MongoDB model
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 // Register User
@@ -47,65 +47,68 @@ exports.loginUser = async (req, res) => {
     console.log("Logging in user:", { email, dbType });
 
     try {
+        console.log("Login Step 1: Checking user existence...");
         if (dbType === 'mongodb') {
             const user = await User.findOne({ email });
-            if (!user) return res.status(400).json({ message: 'User not found' });
+            if (!user) {
+                console.log("Login Error: User not found (MongoDB)");
+                return res.status(400).json({ message: 'User not found' });
+            }
 
+            console.log("Login Step 2: Comparing passwords (bcryptjs)...");
             const isMatch = await bcrypt.compare(password, user.password);
-            if (!isMatch) return res.status(400).json({ message: 'Invalid password' });
+            if (!isMatch) {
+                console.log("Login Error: Invalid password (MongoDB)");
+                return res.status(400).json({ message: 'Invalid password' });
+            }
 
+            console.log("Login Step 3: Generating token...");
             const token = jwt.sign(
                 { id: user._id, email: user.email },
                 process.env.JWT_SECRET,
                 { expiresIn: '1d' }
             );
 
+            console.log("Login Success: Sending response (MongoDB)");
             return res.json({
                 message: 'Login successful (MongoDB)',
                 token: token,
-                user: {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    weight: user.weight,
-                    height: user.height
-                }
+                user: { id: user._id, name: user.name, email: user.email, weight: user.weight, height: user.height }
             });
         } else {
-            // MySQL
+            console.log("Login Step 1: Querying MySQL...");
             const query = `SELECT * FROM users WHERE email = ?`;
             const [results] = await getDB().promise().query(query, [email]);
 
             if (results.length === 0) {
+                console.log("Login Error: User not found (MySQL)");
                 return res.status(400).json({ message: 'User not found' });
             }
 
             const user = results[0];
+            console.log("Login Step 2: Comparing passwords (bcryptjs)...");
             const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
+                console.log("Login Error: Invalid password (MySQL)");
                 return res.status(400).json({ message: 'Invalid password' });
             }
 
+            console.log("Login Step 3: Generating token...");
             const token = jwt.sign(
                 { id: user.id, email: user.email },
                 process.env.JWT_SECRET,
                 { expiresIn: '1d' }
             );
 
+            console.log("Login Success: Sending response (MySQL)");
             return res.json({
                 message: 'Login successful (MySQL)',
                 token: token,
-                user: {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    weight: user.weight,
-                    height: user.height
-                }
+                user: { id: user.id, name: user.name, email: user.email, weight: user.weight, height: user.height }
             });
         }
     } catch (error) {
-        console.error("Login Controller Error:", error);
+        console.error("Login Controller Critical Error:", error);
         return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };

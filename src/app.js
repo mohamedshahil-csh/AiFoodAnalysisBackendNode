@@ -16,8 +16,8 @@ const initDB = async () => {
             const connectMongoDB = require('./config/mongodb');
             await connectMongoDB();
         } else {
-            const connectMySQL = require('./config/db');
-            connectMySQL(); // Initializes the lazy connection
+            const getDB = require('./config/db');
+            getDB(); // Initializes the lazy connection
         }
     } catch (err) {
         console.error('Database Initialization Error:', err.message);
@@ -33,6 +33,17 @@ app.use(express.json());
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
     next();
+});
+
+// 🏥 HEALTH CHECK / DIAGNOSTICS
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: "up",
+        db_type: process.env.DB_TYPE || 'mysql',
+        env: process.env.NODE_ENV || 'development',
+        mongo_uri_exists: !!(process.env.MONGODB_URI || process.env.MONGO_URI),
+        mysql_host: process.env.DB_HOST || 'localhost'
+    });
 });
 
 app.use('/api/users', userRoutes);
