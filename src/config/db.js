@@ -9,6 +9,7 @@ let connection;
 const getDB = () => {
     if (connection) return connection;
 
+
     connection = mysql.createConnection({
         host: process.env.DB_HOST || 'localhost',
         user: process.env.DB_USER || 'root',
