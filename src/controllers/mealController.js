@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 // SAVE MEAL
 exports.saveMeal = async (req, res) => {
-    const userId = req.body.user_id;
+    const userId = req.user.id; // FIXED
     const data = req.body;
     const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
@@ -25,14 +25,17 @@ exports.saveMeal = async (req, res) => {
                 caution_reason: reason,
                 full_json: data
             });
+
             await newMeal.save();
+
             return res.json({ message: "saved (MongoDB)" });
+
         } else {
-            // MySQL Promise-based
+
             const query = `INSERT INTO meal_history 
                 (user_id,dish_name,calories,health_score,verdict,caution_reason,full_json)
                 VALUES (?,?,?,?,?,?,?)`;
-            
+
             await getDB().promise().query(query, [
                 userId,
                 dishName,
@@ -42,9 +45,10 @@ exports.saveMeal = async (req, res) => {
                 reason,
                 JSON.stringify(data)
             ]);
-            
+
             return res.json({ message: "saved (MySQL)" });
         }
+
     } catch (error) {
         console.error("Save Meal Error:", error);
         return res.status(500).json({ message: "Server error", error: error.message });
@@ -53,8 +57,7 @@ exports.saveMeal = async (req, res) => {
 
 // GET ALL MEALS
 exports.getMeals = async (req, res) => {
-    const userId = req.params.user_id;
-    const dbType = (process.env.DB_TYPE || 'mysql').trim();
+    const userId = req.user.id; const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
         if (dbType === 'mongodb') {
@@ -80,7 +83,7 @@ exports.getMeals = async (req, res) => {
                 FROM meal_history
                 WHERE user_id = ?
                 ORDER BY created_at DESC`;
-            
+
             const [results] = await getDB().promise().query(query, [userId]);
             return res.json(results);
         }
@@ -98,7 +101,7 @@ exports.getMealById = async (req, res) => {
     try {
         if (dbType === 'mongodb') {
             if (!mongoose.Types.ObjectId.isValid(id)) {
-                 return res.status(400).json({ message: "Invalid ID format" });
+                return res.status(400).json({ message: "Invalid ID format" });
             }
             const meal = await Meal.findById(id);
             if (!meal) return res.status(404).json({ message: "Not found" });
@@ -123,7 +126,7 @@ exports.deleteMeal = async (req, res) => {
     try {
         if (dbType === 'mongodb') {
             if (!mongoose.Types.ObjectId.isValid(id)) {
-                 return res.status(400).json({ message: "Invalid ID format" });
+                return res.status(400).json({ message: "Invalid ID format" });
             }
             await Meal.findByIdAndDelete(id);
             return res.json({ message: "Deleted successfully (MongoDB)" });
@@ -141,8 +144,7 @@ exports.deleteMeal = async (req, res) => {
 
 // GET LATEST
 exports.getLatestMeals = async (req, res) => {
-    const userId = req.params.user_id;
-    const limit = parseInt(req.query.limit) || 5;
+    const userId = req.user.id; const limit = parseInt(req.query.limit) || 5;
     const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
@@ -166,8 +168,7 @@ exports.getLatestMeals = async (req, res) => {
 
 // DATE, RANGE, LIMIT functions updated similarly...
 exports.getMealsByDate = async (req, res) => {
-    const userId = req.params.user_id;
-    const { date } = req.query;
+    const userId = req.user.id; const { date } = req.query;
     const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
@@ -194,8 +195,7 @@ exports.getMealsByDate = async (req, res) => {
 };
 
 exports.getMealsByRange = async (req, res) => {
-    const userId = req.params.user_id;
-    const { startDate, endDate } = req.query;
+    const userId = req.user.id; const { startDate, endDate } = req.query;
     const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
@@ -222,8 +222,7 @@ exports.getMealsByRange = async (req, res) => {
 };
 
 exports.getLatestLimit = async (req, res) => {
-    const userId = req.params.user_id;
-    const limit = parseInt(req.query.limit) || 5;
+    const userId = req.user.id; const limit = parseInt(req.query.limit) || 5;
     const dbType = (process.env.DB_TYPE || 'mysql').trim();
 
     try {
