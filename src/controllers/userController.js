@@ -46,6 +46,9 @@ exports.loginUser = async (req, res) => {
     const dbType = (process.env.DB_TYPE || 'mysql').trim();
     console.log("Logging in user:", { email, dbType });
 
+    console.log("LOGIN HIT - JWT_SECRET length:", (process.env.JWT_SECRET || '').trim().length);
+
+
     try {
         console.log("Login Step 1: Checking user existence...");
         if (dbType === 'mongodb') {
