@@ -63,8 +63,7 @@ exports.loginUser = async (req, res) => {
             }
 
             console.log("Login Step 3: Generating token...");
-            const secret = (process.env.JWT_SECRET || 'fallback_secret').trim();
-            const token = jwt.sign(
+            const secret = process.env.JWT_SECRET; const token = jwt.sign(
                 { id: user._id.toString(), email: user.email },
                 secret,
                 { expiresIn: '1d' }
